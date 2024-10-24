@@ -683,4 +683,42 @@ clean_up:
     vTaskDelete(NULL);
 }
 
-//agregar funcion mDNS
+/* Funcion para inicializar y configurar mDNS*/
+void mdns_config()
+{
+    /* Se inicializa mDNS*/
+    mdns_init();
+
+    // Nombre del host
+    mdns_hostname_set("esp32-mdns");
+
+    // Registra el nombre del servicio en este caso (esp32-coap.local.) del tipo (_coap._udp.local.)
+    esp_err_t err = mdns_service_add("esp32-coap", "_coap", "_udp", 5683, NULL, 0);
+    if (err != ESP_OK) {
+        ESP_LOGE(TAG, "Error al registrar el servicio mDNS: %s", esp_err_to_name(err));
+    } else {
+        ESP_LOGI(TAG, "Servicio mDNS registrado correctamente");
+    }
+}
+
+void app_main(void)
+{
+    ESP_ERROR_CHECK( nvs_flash_init() );
+    ESP_ERROR_CHECK(esp_netif_init());
+    ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
+     * Read "Establishing Wi-Fi or Ethernet Connection" section in
+     * examples/protocols/README.md for more information about this function.
+     */
+    ESP_ERROR_CHECK(example_connect());
+
+    // Configurar mDNS
+    mdns_config();
+
+    // Iniciar con la creacion del servidor coap
+    xTaskCreate(coap_example_server, "coap", 8 * 1024, NULL, 5, NULL);
+
+    /* Oscore es una herramienta de seguridad que se encarga de cifrar y verificar los mensajes, en este casi se deshabilita */
+    /* WebSockets es la forma de transportacion de los datos, permite comunicacion full duplex, sin embargo, se deshabilita ya que se usa UDP */
+}
